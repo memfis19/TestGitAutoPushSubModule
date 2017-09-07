@@ -1,4 +1,7 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.ajoberstar.grgit'
+
+//submodules approach does not work with grgit/jgrit
 
 android {
     compileSdkVersion 25
@@ -27,4 +30,95 @@ dependencies {
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     testCompile 'junit:junit:4.12'
+}
+
+version = "1.0.0-${grgit.head().abbreviatedId}.${getDate()}.${Math.random()}"
+
+task tagRelease {
+    description = 'Tags the current head with the project\'s version.'
+    doLast {
+        def credentials = new Credentials(username, password)
+        def grgit1 = grgit.open {
+            currentDir = ""
+            creds = credentials
+        }
+        if (grgit1.tag.list().contains(version)) {
+            grgit1.tag.remove {
+                names = [version]
+            }
+        }
+        grgit1.tag.add {
+            name = version
+            message = "Release of ${version}"
+        }
+        grgit1.push {
+            tags = true
+        }
+        grgit1.close()
+    }
+}
+
+def getDate() {
+    new Date().format('yyyyMMddHHmmss')
+}
+
+import org.ajoberstar.grgit.Grgit
+import org.ajoberstar.grgit.Credentials
+import org.ajoberstar.grgit.util.CoercionUtil
+
+task pushToOrigin {
+    description = 'Pushes current branch\'s committed changes to origin repo.'
+    doLast {
+        def credentials = new Credentials(username, password)
+        def grgit1 = grgit.open {
+            currentDir = ""
+            creds = credentials
+        }
+        grgit1.add(patterns: ['.'])
+        grgit1.commit(message: "changes")
+        grgit1.push()
+        grgit1.close()
+    }
+}
+
+task buildAndPush {
+    outputs.println("Path to curr dir sub= ${file('.')}")
+
+    dependsOn 'clean'
+    dependsOn 'build'
+    dependsOn 'tagRelease'
+    dependsOn 'pushToOrigin'
+
+    tasks.findByName('build').mustRunAfter 'clean'
+    tasks.findByName('tagRelease').mustRunAfter 'build'
+    tasks.findByName('pushToOrigin').mustRunAfter 'tagRelease'
+}
+
+task checkoutParams {
+    doLast {
+        def grgit1 = grgit.open {
+            currentDir = ""
+        }
+
+        def currBranch = grgit1.branch.current()
+        def hasBranch = grgit1.branch.list().find {it.getName() == branchName} != null
+
+        outputs.println("Branches: ${grgit1.branch.list()}")
+        outputs.println("Current: refs/heads/${branchName}")
+        outputs.println("Names: ")
+        grgit1.branch.list().each {outputs.print("${it.getName()},")}
+
+        if (currBranch == branchName || hasBranch) {
+            grgit1.checkout {
+                branch = branchName
+            }
+        } else {
+            grgit1.checkout {
+                createBranch = true
+                branch = branchName
+            }
+        }
+
+        grgit1.close()
+    }
 }
