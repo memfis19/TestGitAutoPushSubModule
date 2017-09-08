@@ -10,5 +10,6 @@ public class SubMainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sub_main);
         //123
+        //test
     }
 }
