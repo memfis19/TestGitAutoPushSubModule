@@ -39,7 +39,7 @@ task tagRelease {
     doLast {
         def credentials = new Credentials(username, password)
         def grgit1 = grgit.open {
-            currentDir = ""
+            currentDir = submodule_path
             creds = credentials
         }
         if (grgit1.tag.list().contains(version)) {
@@ -71,7 +71,7 @@ task pushToOrigin {
     doLast {
         def credentials = new Credentials(username, password)
         def grgit1 = grgit.open {
-            currentDir = ""
+            currentDir = submodule_path
             creds = credentials
         }
         grgit1.add(patterns: ['.'])
@@ -97,7 +97,7 @@ task buildAndPush {
 task checkoutParams {
     doLast {
         def grgit1 = grgit.open {
-            currentDir = ""
+            currentDir = submodule_path
         }
 
         def currBranch = grgit1.branch.current()
